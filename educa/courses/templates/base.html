@@ -13,6 +13,7 @@
         {% if request.user.is_authenticated %}
           <li>
             <form action="{% url "logout" %}" method="post">
+              {% csrf_token %}
               <button type="submit">Sign out</button>
             </form>
           </li>
