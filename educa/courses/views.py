@@ -1,20 +1,20 @@
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import ListView
-from .models import Course
+from django.core.cache import cache
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic.base import TemplateResponseMixin, View
-from .forms import ModuleFormSet
+from django.views.generic.detail import DetailView
+from django.db.models import Count
 from django.apps import apps
 from django.forms.models import modelform_factory
-from .models import Module, Content
 from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
-from django.db.models import Count
-from .models import Subject
-from django.views.generic.detail import DetailView
 from students.forms import CourseEnrollForm
-from django.core.cache import cache
+from .forms import ModuleFormSet
+from .models import Course
+from .models import Module, Content
+from .models import Subject
 
 
 class OwnerMixin:

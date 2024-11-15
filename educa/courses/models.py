@@ -2,8 +2,8 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from .fields import OrderField
 from django.template.loader import render_to_string
+from .fields import OrderField
 
 
 class Subject(models.Model):
