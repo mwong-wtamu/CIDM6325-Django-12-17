@@ -1,2 +1,14 @@
 {% load embed_video_tags %}
-{% video item.url "small" %}
+{% if item.url %}
+  <!-- Embed YouTube Video -->
+  {% video item.url "small" %}
+{% elif item.file %}
+  <!-- HTML5 Video Player for MP4 -->
+  <video width="640" height="360" controls>
+    <source src="{{ item.file.url }}" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+{% else %}
+  <!-- Fallback: No Content -->
+  <p>No video content available.</p>
+{% endif %}

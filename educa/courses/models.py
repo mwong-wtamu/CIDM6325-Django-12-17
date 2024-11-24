@@ -3,7 +3,10 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
+from django.core.validators import FileExtensionValidator
 from .fields import OrderField
+from django.core.exceptions import ValidationError
+import os
 
 
 class Subject(models.Model):
@@ -54,6 +57,9 @@ class Content(models.Model):
     module = models.ForeignKey(
         Module, related_name="contents", on_delete=models.CASCADE
     )
+    owner = models.ForeignKey(
+        User, related_name="owned_contents", on_delete=models.CASCADE
+    )  # Add ownership
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
@@ -91,14 +97,83 @@ class ItemBase(models.Model):
 class Text(ItemBase):
     content = models.TextField()
 
+    file = models.FileField(
+        upload_to="texts",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=["txt"])],
+    )
+
+    def clean(self):
+        """
+        Ensure either 'content' or 'file' is provided, but not both.
+        """
+        if not self.content and not self.file:
+            raise ValidationError(
+                "You must provide either text content or upload a text file."
+            )
+        if self.content and self.file:
+            raise ValidationError(
+                "You cannot provide both text content and a text file."
+            )
+
+    def render(self):
+        """
+        Render video content using a dedicated template.
+        """
+        return render_to_string("courses/content/text.html", {"item": self})
+
 
 class File(ItemBase):
-    file = models.FileField(upload_to="files")
+    file = models.FileField(
+        upload_to="files",
+        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+    )
+
+    def render(self):
+        """
+        Render content using a dedicated template.
+        """
+        return render_to_string("courses/content/file.html", {"item": self})
 
 
 class Image(ItemBase):
-    file = models.FileField(upload_to="images")
+    file = models.FileField(
+        upload_to="images",
+        validators=[FileExtensionValidator(allowed_extensions=["png"])],
+    )
 
 
 class Video(ItemBase):
-    url = models.URLField()
+    url = models.URLField(blank=True, null=True)  # For YouTube links
+    file = models.FileField(
+        upload_to="videos",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=["mp4"])],
+    )
+
+    def clean(self):
+        """
+        Custom validation to ensure that either a YouTube URL or an MP4 file is provided.
+        """
+        if not self.url and not self.file:
+            raise ValidationError(
+                "You must provide either a YouTube URL or an MP4 file."
+            )
+        if self.url and not self.url.startswith(
+            ("http://www.youtube.com", "https://www.youtube.com")
+        ):
+            raise ValidationError("Only YouTube links are allowed in the URL field.")
+        if self.file and not self.file.name.lower().endswith(".mp4"):
+            raise ValidationError("Only MP4 files are allowed for video uploads.")
+
+    def save(self, *args, **kwargs):
+        self.clean()  # Call the clean method for validation
+        super().save(*args, **kwargs)
+
+    def render(self):
+        """
+        Render video content using a dedicated template.
+        """
+        return render_to_string("courses/content/video.html", {"item": self})

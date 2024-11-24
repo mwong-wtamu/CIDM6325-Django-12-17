@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ object.item.title }}
+{% endblock %}
+
+{% block content %}
+    <h1>{{ object.item.title }}</h1>
+    <p><strong>Uploaded on:</strong> {{ object.created }}</p>
+    <p><strong>Module:</strong> {{ object.module.title }}</p>
+    <div>
+        {{ object.item.render|safe }}
+    </div>
+    <a href="{% url 'module_content_list' object.module.id %}">Back to Module</a>
+{% endblock %}

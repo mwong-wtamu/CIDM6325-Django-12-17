@@ -1,12 +1,10 @@
 {% extends "base.html" %}
-{% load cache %}
+{% load model_name %}
 {% block title %}
   {{ object.title }}
 {% endblock %}
 {% block content %}
-  <h1>
-    {{ module.title }}
-  </h1>
+  <h1>{{ module.title }}</h1>
   <div class="contents">
     <h3>Modules</h3>
     <ul id="modules">
@@ -25,19 +23,57 @@
       {% endfor %}
     </ul>
     <h3>
-      <a href="{% url "chat:course_chat_room" object.id %}">
-        Course chat room
-      </a>
+      <a href="{% url "chat:course_chat_room" object.id %}">Course chat room</a>
     </h3>
   </div>
+
+  <!-- Instructor Content Section -->
   <div class="module">
-    {% cache 600 module_contents module %}
-      {% for content in module.contents.all %}
-        {% with item=content.item %}
-          <h2>{{ item.title }}</h2>
-          {{ item.render }}
-        {% endwith %}
-      {% endfor %}
-    {% endcache %}
+    <h3>Module Content</h3>
+    {% for content in instructor_content %}
+      <div class="content-item">
+        <h2>{{ content.item.title }}</h2>
+        <p>{{ content.item.render }}</p>
+      </div>
+    {% empty %}
+      <p>No instructor content available.</p>
+    {% endfor %}
   </div>
+  
+
+  <div class="module">
+    <!-- Add Upload Section -->
+    {% if can_upload %}
+      <h3>Upload Your Work:</h3>
+      <ul class="content-types">
+          <li>
+              <a href="{% url 'student_content_create' module.id 'text' %}">Text</a>
+          </li>
+          <li>
+              <a href="{% url 'student_content_create' module.id 'image' %}">Image</a>
+          </li>
+          <li>
+              <a href="{% url 'student_content_create' module.id 'video' %}">Video</a>
+          </li>
+          <li>
+              <a href="{% url 'student_content_create' module.id 'file' %}">File</a>
+          </li>
+      </ul>
+    {% endif %}
+  </div>
+
+  <!-- Student Content Section -->
+  <div class="module">
+    <h3>Your Work</h3>
+    {% for content in student_content %}
+      <div class="content-item">
+        <a href="{% url 'student_content_detail' module.id content.id %}"><h2>{{ content.item.title }}</h2></a>
+        <!-- <p>{% comment %} {{ content.item.render }} {% endcomment %}</p> -->
+        <p>Uploaded on: {{ content.item.created|date:"F j, Y, g:i a" }}</p>
+      </div>
+    {% empty %}
+      <p>You have no work uploaded.</p>
+    {% endfor %}
+  </div>
+
 {% endblock %}

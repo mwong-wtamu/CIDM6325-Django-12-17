@@ -39,4 +39,19 @@ urlpatterns = [
         name="course_list_subject",
     ),
     path("<slug:slug>/", views.CourseDetailView.as_view(), name="course_detail"),
+    path(
+        "students/module/<int:module_id>/<str:model_name>/create/",
+        views.StudentContentCreateUpdateView.as_view(),
+        name="student_content_create",
+    ),
+    path(
+        "course/<int:pk>/module/<int:module_id>/content/<int:id>/",
+        views.InstructorContentDetailView.as_view(),
+        name="instructor_content_detail",
+    ),
+    path(
+        "content/<int:id>/",
+        views.InstructorContentDetailView.as_view(),
+        name="instructor_content_detail",
+    ),
 ]

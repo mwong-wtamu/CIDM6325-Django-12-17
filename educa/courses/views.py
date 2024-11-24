@@ -9,6 +9,7 @@ from django.views.generic.detail import DetailView
 from django.db.models import Count
 from django.apps import apps
 from django.forms.models import modelform_factory
+from django.http import HttpResponseBadRequest
 from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
 from students.forms import CourseEnrollForm
 from .forms import ModuleFormSet
@@ -120,7 +121,7 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
             obj.save()
             if not id:
                 # new content
-                Content.objects.create(module=self.module, item=obj)
+                Content.objects.create(module=self.module, item=obj, owner=request.user)
             return redirect("module_content_list", self.module.id)
         return self.render_to_response({"form": form, "object": self.obj})
 
@@ -137,9 +138,30 @@ class ContentDeleteView(View):
 class ModuleContentListView(TemplateResponseMixin, View):
     template_name = "courses/manage/module/content_list.html"
 
+    # def get(self, request, module_id):
+    #     module = get_object_or_404(Module, id=module_id, course__owner=request.user)
+    #     return self.render_to_response({"module": module})
+
     def get(self, request, module_id):
-        module = get_object_or_404(Module, id=module_id, course__owner=request.user)
-        return self.render_to_response({"module": module})
+        module = get_object_or_404(Module, id=module_id)
+
+        course = module.course  # Retrieve the course related to the module
+
+        # Separate instructor and student content
+        instructor_content = module.contents.filter(
+            owner=course.owner
+        )  # Owner of the course is the instructor
+        student_content = module.contents.filter(
+            owner__in=course.students.all()
+        )  # Enrolled students' content
+
+        return self.render_to_response(
+            {
+                "module": module,
+                "instructor_content": instructor_content,
+                "student_content": student_content,
+            }
+        )
 
 
 class ModuleOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
@@ -192,4 +214,165 @@ class CourseDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["enroll_form"] = CourseEnrollForm(initial={"course": self.object})
+        return context
+
+
+# Content creation and update view for students
+class StudentContentCreateUpdateView(LoginRequiredMixin, TemplateResponseMixin, View):
+    module = None
+    model = None
+    obj = None
+    template_name = "courses/manage/content/form.html"
+
+    def get_model(self, model_name):
+        """Retrieve model based on the type of content."""
+        if model_name in ["text", "video", "image", "file"]:
+            return apps.get_model(app_label="courses", model_name=model_name)
+        return None
+
+    def get_form(self, model, *args, **kwargs):
+        """Generate a form dynamically based on the model."""
+        Form = modelform_factory(
+            model, exclude=["owner", "order", "created", "updated"]
+        )
+
+        form = Form(*args, **kwargs)
+
+        # Make content and file optional for the 'text' model
+        if model._meta.model_name == "text":
+            form.fields["content"].required = False
+            form.fields["file"].required = False
+
+            # Remove 'required' attribute in the HTML
+            form.fields["content"].widget.attrs["required"] = False
+            form.fields["file"].widget.attrs["required"] = False
+
+        return form
+
+    def dispatch(self, request, module_id, model_name, id=None):
+        """
+        Handle the request and ensure students can only manage their content.
+        """
+        # Retrieve the module
+        self.module = get_object_or_404(Module, id=module_id)
+
+        # Check if the user is enrolled in the course
+        if request.user not in self.module.course.students.all():
+            return redirect("student_course_list")  # Redirect if not enrolled
+
+        # Retrieve the model for the content type
+        self.model = self.get_model(model_name)
+
+        # Check ownership if editing existing content
+        if id:
+            self.obj = get_object_or_404(self.model, id=id, owner=request.user)
+
+        # Proceed with the usual dispatch
+        return super().dispatch(request, module_id, model_name, id)
+
+    def get(self, request, module_id, model_name, id=None):
+        """Handle GET requests to display the form."""
+        form = self.get_form(self.model, instance=self.obj)
+        return self.render_to_response({"form": form, "object": self.obj})
+
+    def post(self, request, module_id, model_name, id=None):
+        """Handle POST requests to save the form."""
+        form = self.get_form(
+            self.model, instance=self.obj, data=request.POST, files=request.FILES
+        )
+
+        if model_name == "file":
+            uploaded_file = request.FILES.get("file")
+            if uploaded_file and not uploaded_file.name.endswith(".pdf"):
+                return HttpResponseBadRequest("Only PDF files are allowed.")
+
+        if model_name == "image":
+            uploaded_image = request.FILES.get("image")
+            if uploaded_image and not uploaded_image.name.lower().endswith(".png"):
+                return HttpResponseBadRequest("Only PNG images are allowed.")
+
+        if model_name == "video":
+            uploaded_file = request.FILES.get("file")
+            video_url = request.POST.get("url")
+
+            # Validate YouTube URL
+            if video_url and not video_url.startswith(
+                ("http://www.youtube.com", "https://www.youtube.com")
+            ):
+                return HttpResponseBadRequest("Only YouTube links are allowed.")
+
+            # Validate MP4 file
+            if uploaded_file and not uploaded_file.name.lower().endswith(".mp4"):
+                return HttpResponseBadRequest(
+                    "Only MP4 files are allowed for video uploads."
+                )
+
+            # Ensure at least one is provided
+            if not video_url and not uploaded_file:
+                return HttpResponseBadRequest(
+                    "You must provide either a YouTube URL or an MP4 file."
+                )
+
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.owner = request.user  # Assign the owner as the current student
+            obj.save()
+            if not id:
+                # Create a new content entry
+                Content.objects.create(module=self.module, item=obj, owner=request.user)
+            # Redirect to the correct student view after saving
+            return redirect(
+                "student_course_detail_module",
+                pk=self.module.course.id,
+                module_id=self.module.id,
+            )
+        return self.render_to_response({"form": form, "object": self.obj})
+
+
+class StudentContentDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk, module_id, model_name, id):
+        # Your existing code here
+
+        """
+        Allow students to delete their own content.
+        """
+
+        # Get the model based on the content type
+        model = apps.get_model(app_label="courses", model_name=model_name)
+        # Retrieve the object to delete
+        content = get_object_or_404(model, id=id, owner=request.user)
+        # Delete the object
+        content.delete()
+        # Redirect to the student course detail view
+        return redirect(
+            "student_course_detail_module", pk=request.user.id, module_id=module_id
+        )
+
+
+class InstructorContentDetailView(LoginRequiredMixin, DetailView):
+    model = Content
+    template_name = "courses/manage/module/content_detail.html"
+
+    def get_object(self, queryset=None):
+        # Override to use 'id' instead of 'pk'
+        queryset = self.get_queryset()
+        return queryset.get(id=self.kwargs["id"])
+
+    def get_queryset(self):
+
+        print("URL Parameters:", self.kwargs)
+        queryset = Content.objects.filter(
+            # module__course__id=self.kwargs["pk"],  # Course ID
+            # module__id=self.kwargs["module_id"],  # Module ID
+            # id=self.kwargs["id"],  # Content ID
+            module__course__owner=self.request.user,  # Course owned by the professor
+        )
+        print("Filtered Queryset for InstructorContentDetailView:", queryset)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pass the content item to the context
+        print("Context Object:", self.object)
+        context["item"] = self.object.item
         return context

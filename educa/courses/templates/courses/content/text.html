@@ -1,1 +1,12 @@
+{% if item.file %}
+  <!-- Downloadable Text File -->
+  <a href="{{ item.file.url }}" download="{{ item.title }}" class="btn btn-primary">
+    Download {{ item.title }}
+  </a>
+{% elif item.content %}
+  <!-- Render Text Content -->
 {{ item.content|linebreaks }}
+
+{% else %}
+  <p>No text content available.</p>
+{% endif %}

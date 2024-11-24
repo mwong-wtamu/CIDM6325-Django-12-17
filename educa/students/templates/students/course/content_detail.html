@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ object.item.title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ object.item.title }}</h1>
+  <p>Uploaded on: {{ object.item.created|date:"F j, Y, g:i a" }}</p>
+  <div class="content-body">
+    {{ object.item.render|safe }}
+  </div>
+  <p>
+    <a href="{% url 'student_course_detail_module' object.module.course.id object.module.id %}">
+      Back to Module
+    </a>
+  </p>
+{% endblock %}
