@@ -23,8 +23,11 @@ from django.urls import include, path
 from courses.views import CourseListView
 
 urlpatterns = [
-    path("accounts/login/", auth_views.LoginView.as_view(), name="login"),
-    path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # path("accounts/login/", auth_views.LoginView.as_view(), name="login"),
+    # path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("", include("account.urls")),
+    path("account/", include("account.urls")),
+    path("social-auth/", include("social_django.urls", namespace="social")),
     path("admin/", admin.site.urls),
     path("course/", include("courses.urls")),
     path("", CourseListView.as_view(), name="course_list"),

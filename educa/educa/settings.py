@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 from django.urls import reverse_lazy
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,12 +28,13 @@ SECRET_KEY = "django-insecure-bkjv-^y&qmmao@29y95y5!gvyid+f9@nypgn4#yi0o=6^04rzf
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    "account.apps.AccountConfig",
     "daphne",
     "courses.apps.CoursesConfig",
     "django.contrib.admin",
@@ -42,10 +45,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "students.apps.StudentsConfig",
     "embed_video",
+    "actions.apps.ActionsConfig",
     "debug_toolbar",
     "redisboard",
     "rest_framework",
     "chat.apps.ChatConfig",
+    "django_extensions",
+    "social_django",
+    "taggit",
 ]
 
 MIDDLEWARE = [
@@ -59,6 +66,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "social_django.middleware.SocialAuthExceptionMiddleware",
 ]
 
 ROOT_URLCONF = "educa.urls"
@@ -137,6 +145,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "account.authentication.EmailAuthBackend",
+    "social_core.backends.google.GoogleOAuth2",
+]
+
 LOGIN_REDIRECT_URL = reverse_lazy("student_course_list")
 
 CACHES = {
@@ -171,4 +185,11 @@ CHANNEL_LAYERS = {
             "hosts": [("127.0.0.1", 6379)],
         },
     },
+}
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = config("GOOGLE_OAUTH2_KEY")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config("GOOGLE_OAUTH2_SECRET")
+
+ABSOLUTE_URL_OVERRIDES = {
+    "auth.user": lambda u: reverse_lazy("user_detail", args=[u.username])
 }
