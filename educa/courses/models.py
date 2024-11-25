@@ -7,6 +7,7 @@ from django.core.validators import FileExtensionValidator
 from .fields import OrderField
 from django.core.exceptions import ValidationError
 import os
+from taggit.managers import TaggableManager
 
 
 class Subject(models.Model):
@@ -38,6 +39,8 @@ class Course(models.Model):
 
     def __str__(self):
         return self.title
+
+    tags = TaggableManager()
 
 
 class Module(models.Model):
