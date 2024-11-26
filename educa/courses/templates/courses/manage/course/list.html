@@ -6,6 +6,7 @@
     {% for course in object_list %}
       <div class="course-info">
         <h3>{{ course.title }}</h3>
+        <p class="tags">Tags: {{ course.tags.all|join:", " }}</p>
         <p>
           <a href="{% url "course_edit" course.id %}">Edit</a>
           <a href="{% url "course_delete" course.id %}">Delete</a>

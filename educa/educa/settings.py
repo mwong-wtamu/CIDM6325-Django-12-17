@@ -200,3 +200,18 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config("GOOGLE_OAUTH2_SECRET")
 ABSOLUTE_URL_OVERRIDES = {
     "auth.user": lambda u: reverse_lazy("user_detail", args=[u.username])
 }
+
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Email server configuration
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+
+# print("EMAIL_HOST_USER:", config("EMAIL_HOST_USER", default="Not Found"))
+# print("EMAIL_HOST_PASSWORD:", config("EMAIL_HOST_PASSWORD", default="Not Found"))
+# print("DEFAULT_FROM_EMAIL:", config("DEFAULT_FROM_EMAIL", default="Not Found"))
